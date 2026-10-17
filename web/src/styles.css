@@ -1,0 +1,22 @@
+:root { color-scheme: light dark; --bg:#0f1115; --fg:#e8e8ea; --mut:#8a8f98; --card:#181b21; --line:#2a2e37; --acc:#7c5cff; --ok:#3ecf8e; --bad:#ff6b6b; }
+@media (prefers-color-scheme: light) { :root { --bg:#f6f7f9; --fg:#14161a; --mut:#6b717b; --card:#fff; --line:#dfe2e8; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, -apple-system, "PingFang SC", sans-serif; }
+main { max-width: 860px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 22px; margin: 8px 0 2px; } h2 { font-size: 16px; margin: 0 0 8px; }
+.sub { color: var(--mut); margin: 0 0 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin: 12px 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.stat { font-size: 12px; color: var(--mut); } .stat b { display:block; font-size: 18px; color: var(--fg); font-weight: 600; }
+button { background: var(--acc); color:#fff; border:0; border-radius:8px; padding: 7px 12px; font: inherit; cursor:pointer; }
+button.sec { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+button:disabled { opacity:.45; cursor: not-allowed; }
+input, textarea, select { background: transparent; color: var(--fg); border:1px solid var(--line); border-radius:8px; padding:6px 8px; font: inherit; min-width: 0; }
+textarea { width: 100%; font: 12px/1.4 ui-monospace, monospace; min-height: 120px; }
+.tabs { display:flex; gap:6px; margin: 10px 0; } .tabs button { background: transparent; color: var(--fg); border:1px solid var(--line); }
+.tabs button.on { background: var(--acc); color:#fff; border-color: var(--acc); }
+.mono { font-family: ui-monospace, monospace; font-size: 12px; word-break: break-all; }
+.ok { color: var(--ok); } .bad { color: var(--bad); } .mut { color: var(--mut); }
+.log { max-height: 160px; overflow:auto; font: 12px ui-monospace, monospace; white-space: pre-wrap; }
+table { width:100%; border-collapse: collapse; font-size: 13px; } td, th { text-align:left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
