@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatEther, type Address } from 'viem'
 import type { Ctx } from './wallet'
+import { errorMessage } from './messages'
 import MinerWorker from './miner.worker?worker'
 
 type Round = { seed: `0x${string}`; openedAt: bigint; deadline: bigint; totalPoints: number; closed: boolean; reserved: bigint }
@@ -55,7 +56,7 @@ export function MinerPage({ ctx }: { ctx: Ctx }) {
         setMine(out)
       }
     } catch (e: any) {
-      setErr(e.shortMessage ?? e.message)
+      setErr(errorMessage(e))
     }
   }, [account, mining, pub, read, dep])
 
@@ -73,7 +74,7 @@ export function MinerPage({ ctx }: { ctx: Ctx }) {
   const act = (label: string, fn: () => Promise<void>) => async () => {
     setBusy(label)
     setErr('')
-    try { await fn(); await refresh() } catch (e: any) { setErr(e.message) } finally { setBusy('') }
+    try { await fn(); await refresh() } catch (e: any) { setErr(errorMessage(e)) } finally { setBusy('') }
   }
 
   const secondsLeft = round ? Number(round.deadline) - now : 0
@@ -81,7 +82,7 @@ export function MinerPage({ ctx }: { ctx: Ctx }) {
 
   const startSolver = () => {
     if (!account || !round) return
-    if (!consented.current && !confirm('Run SHA-256 puzzle solving in your browser (CPU load, stoppable at any time)?')) return
+    if (!consented.current && !confirm('是否在浏览器中运行 SHA-256 算题？这会占用处理器资源，你可以随时停止。')) return
     consented.current = true
     worker.current?.terminate()
     const w = new MinerWorker()
@@ -94,7 +95,7 @@ export function MinerPage({ ctx }: { ctx: Ctx }) {
       if (ev.data.type === 'found') {
         setFound(ev.data.nonce)
         setSolver('found')
-        log(`answer found locally (nonce ${ev.data.nonce}) — not accepted until the transaction confirms`)
+        log(`已在本地找到答案（随机数 ${ev.data.nonce}），交易确认后才计分`)
       }
     }
     w.postMessage({
@@ -117,77 +118,68 @@ export function MinerPage({ ctx }: { ctx: Ctx }) {
     return () => document.removeEventListener('visibilitychange', f)
   })
 
-  const fmt = (v?: bigint) => (v === undefined ? '…' : Number(formatEther(v)).toLocaleString(undefined, { maximumFractionDigits: 6 }))
+  const fmt = (v?: bigint) => (v === undefined ? '…' : Number(formatEther(v)).toLocaleString('zh-CN', { maximumFractionDigits: 6 }))
 
   return (
     <>
       <div className="card">
-        <h2>Pool A · 800 BLITZ</h2>
         <div className="grid">
-          <div className="stat">Valid rounds<b>{String(s.validRounds ?? '…')} / 100</b></div>
-          <div className="stat">Available budget<b>{fmt(s.remainingA)}</b></div>
-          <div className="stat">Open reserve<b>{fmt(s.openReserveA)}</b></div>
-          <div className="stat">Closed, unclaimed<b>{fmt(s.closedUnclaimedA)}</b></div>
-          <div className="stat">Paid out<b>{fmt(s.paidA)}</b></div>
-          <div className="stat">Group B<b>200 · permanently locked</b></div>
+          <div className="stat">我的 BLITZ<b>{fmt(blitzBal)}</b></div>
+          <div className="stat">可用预算<b>{fmt(s.remainingA)}</b></div>
+          <div className="stat">有效轮次<b>{String(s.validRounds ?? '…')} / 100</b></div>
         </div>
-        <p className="sub">Your BLITZ: <b>{fmt(blitzBal)}</b> · difficulty {bits} leading zero bits</p>
       </div>
 
       <div className="card">
-        <h2>Current round</h2>
         {openId === 0n ? (
           <>
-            <p className="mut">No round is open.</p>
             <button disabled={!!busy || !account} onClick={act('open', () => write(mining, 'Mining', 'openRound'))}>
-              {busy === 'open' ? 'Opening…' : 'Open round (reserves 8 BLITZ)'}
+              {busy === 'open' ? '正在开启…' : '开启一轮（预留 8 BLITZ）'}
             </button>
           </>
         ) : (
           <>
             <div className="grid">
-              <div className="stat">Round<b>#{String(openId)}</b></div>
-              <div className="stat">Accepted answers<b>{round?.totalPoints ?? 0}</b></div>
-              <div className="stat">{expired ? 'Ended' : 'Time left'}<b>{expired ? 'ready to close' : `${secondsLeft}s`}</b></div>
+              <div className="stat">轮次<b>#{String(openId)}</b></div>
+              <div className="stat">已接受答案<b>{round?.totalPoints ?? 0}</b></div>
+              <div className="stat">{expired ? '已到期' : '剩余时间'}<b>{expired ? '可结算' : `${secondsLeft} 秒`}</b></div>
             </div>
             <div className="row">
               {solver !== 'running' ? (
-                <button disabled={expired || !account || !!busy} onClick={startSolver}>Start solving</button>
+                <button disabled={expired || !account || !!busy} onClick={startSolver}>开始算题</button>
               ) : (
-                <button className="sec" onClick={stopSolver}>Stop</button>
+                <button className="sec" onClick={stopSolver}>停止算题</button>
               )}
-              {solver === 'running' && <span className="mut">searching… {Number(tried).toLocaleString()} nonces tried</span>}
+              {solver === 'running' && <span className="mut">正在算题… 已尝试 {Number(tried).toLocaleString('zh-CN')} 个随机数</span>}
               {solver === 'found' && found && (
                 <button
                   disabled={!!busy || expired}
                   onClick={act('submit', async () => { await write(mining, 'Mining', 'submit', [BigInt(found)]); setSolver('idle'); setFound(undefined) })}
                 >
-                  {busy === 'submit' ? 'Submitting…' : 'Submit answer (1 point)'}
+                  {busy === 'submit' ? '正在提交…' : '提交答案（1 分）'}
                 </button>
               )}
               <button className="sec" disabled={!expired || !!busy} onClick={act('close', () => write(mining, 'Mining', 'closeRound'))}>
-                {busy === 'close' ? 'Closing…' : 'Close round'}
+                {busy === 'close' ? '正在结算…' : '结算本轮'}
               </button>
             </div>
-            <p className="sub">An answer counts only once its transaction is confirmed. Local speed never earns points.</p>
           </>
         )}
-        {err && <p className="bad">{err}</p>}
+        {err && <p className="bad" role="alert">{err}</p>}
       </div>
 
-      <div className="card">
-        <h2>Your contributions</h2>
-        {!account ? <p className="mut">Connect a wallet.</p> : mine.length === 0 ? <p className="mut">None yet.</p> : (
+      {mine.length > 0 && <div className="card">
+        {(
           <table>
-            <thead><tr><th>#</th><th>Round</th><th>Reward</th><th /></tr></thead>
+            <thead><tr><th>编号</th><th>轮次</th><th>奖励</th><th /></tr></thead>
             <tbody>
               {mine.map((c) => (
                 <tr key={c.id}>
                   <td>{c.id}</td><td>{c.round}</td>
-                  <td>{c.closed ? fmt(c.reward) : 'pending (round open)'}</td>
+                  <td>{c.closed ? fmt(c.reward) : '待结算（本轮进行中）'}</td>
                   <td>
-                    {c.claimed ? <span className="ok">claimed</span> : (
-                      <button disabled={!c.closed || !!busy} onClick={act('claim', () => write(mining, 'Mining', 'claim', [BigInt(c.id)]))}>Claim</button>
+                    {c.claimed ? <span className="ok">已领取</span> : (
+                      <button disabled={!c.closed || !!busy} onClick={act('claim', () => write(mining, 'Mining', 'claim', [BigInt(c.id)]))}>领取</button>
                     )}
                   </td>
                 </tr>
@@ -198,11 +190,11 @@ export function MinerPage({ ctx }: { ctx: Ctx }) {
         {mine.some((c) => c.closed && !c.claimed) && (
           <div className="row">
             <button className="sec" disabled={!!busy} onClick={act('claimAll', () => write(mining, 'Mining', 'claimMany', [mine.filter((c) => c.closed && !c.claimed).map((c) => BigInt(c.id))]))}>
-              Claim all
+              全部领取
             </button>
           </div>
         )}
-      </div>
+      </div>}
     </>
   )
 }

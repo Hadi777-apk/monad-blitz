@@ -1,0 +1,8 @@
+{
+  "name": "blitz-local-ai-usage",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node server.mjs", "export": "node server.mjs --export", "test": "node --test usage.test.mjs" },
+  "dependencies": { "@tokscale/cli": "4.19.1" }
+}

@@ -7,7 +7,7 @@ export const abis = abisJson as Record<'Mining' | 'BLITZ' | 'Escrow' | 'MockPayT
 
 export const monadTestnet = defineChain({
   id: 10143,
-  name: 'Monad Testnet',
+  name: 'Monad 测试网',
   nativeCurrency: { name: 'Monad', symbol: 'MON', decimals: 18 },
   // Primary RPC from the v0.5 baseline; the backup has not been verified.
   rpcUrls: { default: { http: ['https://testnet-rpc.monad.xyz'] } },
@@ -39,13 +39,13 @@ export function defaultChainId(): number {
 
 export function publicClientFor(chainId: number) {
   const chain = chains[chainId as keyof typeof chains]
-  if (!chain) throw new Error(`Unsupported chain ${chainId}`)
+  if (!chain) throw new Error(`不支持链 ${chainId}，请切换到已配置的网络。`)
   return createPublicClient({ chain, transport: http() })
 }
 
 export function walletClientFor(chainId: number, account: Address) {
   const chain = chains[chainId as keyof typeof chains]
-  if (!window.ethereum) throw new Error('No injected wallet')
+  if (!window.ethereum) throw new Error('未检测到浏览器钱包。')
   return createWalletClient({ chain, account, transport: custom(window.ethereum) })
 }
 
