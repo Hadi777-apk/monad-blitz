@@ -1,0 +1,23 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+keystore/
+keystores/
+
+# Dependencies and build output
+node_modules/
+.next/
+dist/
+build/
+coverage/
+cache/
+out/
+broadcast/
+
+# Local files
+*.log
+.DS_Store
+Thumbs.db
