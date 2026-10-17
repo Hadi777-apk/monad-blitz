@@ -2,7 +2,7 @@
 
 Monad Blitz 项目，包含独立的链上挖矿与担保交易模块。
 
-**当前版本：v0.5 比赛架构基线。只有文档，尚未编写应用或合约代码，未部署、实测 gas、压测或审计。**
+**当前版本：v0.5 比赛架构基线 + 首版实现。合约与网页已写成，Forge 测试和本地 anvil 端到端通过；尚未部署到 Monad 测试网，未实测 gas、压测或审计，网页未用真实钱包做过浏览器内交互测试。**
 
 ## 当前范围
 
@@ -37,10 +37,38 @@ Monad Blitz 项目，包含独立的链上挖矿与担保交易模块。
 
 主 RPC 为 `https://testnet-rpc.monad.xyz`，此前核对返回链 ID 10143；备用尚未验证。难度暂定 16 位，演示轮 60 秒、普通轮 300 秒；订单默认入金 10 分钟，交付截止再延后 5 分钟。以上均未完成实际流程和费用测试。
 
-当前只设计和同步文档。代码开发须在用户明确开始实现后，并遵守本场活动时间规则；正式作品还需要真实演示、截图及具备队长权限的提交账号。
+代码开发须遵守本场活动时间规则；正式作品还需要真实演示、截图及具备队长权限的提交账号。
 
 ## 官方资源与许可证
 
 - [活动](https://luma.com/2a2bc5hy) · [资料包](https://monad-foundation.notion.site/Monad-Blitz-V3-e294424a90d943aea95bd7b7d3dbf055)
 - [Monad 开发入口](https://monad.xyz/developers) · [开发者 GitHub](https://github.com/monad-developers) · [官方文档](https://docs.monad.xyz/)
 - [MIT 许可证](LICENSE)
+
+## 实现与运行
+
+目录：`src/`（BLITZ、Mining、Escrow，`mocks/` 为测试支付币与测试 NFT）、`test/`（Forge 测试）、`script/Deploy.s.sol`、`web/`（Vite + React + viem，含 Web Worker 算题）、`scripts/`。
+
+```bash
+forge test                      # 47 个测试：分币、轮次、空轮、第 100 轮、签名、时间边界、退款、NFT 取回等
+./scripts/e2e-local.sh          # 起本地 anvil → 部署 → 用 viem 跑完整挖矿+交易+超时退款+授权取回
+```
+
+部署到 Monad 测试网（私钥只在你自己的终端里使用，不要写入仓库）：
+
+```bash
+DIFFICULTY_BITS=16 ROUND_LENGTH=60 forge script script/Deploy.s.sol \
+  --rpc-url https://testnet-rpc.monad.xyz --broadcast --private-key $DEPLOYER_KEY
+node scripts/export-deployment.mjs 10143   # 写入 web/src/abis.json 与 deployments.json
+cd web && npm install && npm run dev       # 本地演示加 ?chain=31337
+```
+
+实现要点与文档的对应/取舍：
+
+- BLITZ 由 Mining 在构造函数中创建并全部铸给自己，之后没有增发/销毁/管理员；200 的 B 份额没有任何转出路径。
+- 每条贡献恰为一个点，区间 `[start, start+1)`，奖励用 `floor(B×end/T) − floor(B×start/T)`。
+- Escrow 首版部署时固定单一支付币和单一 NFT 合约（对应“首版仅限测试资产”）；订单 ID 即 EIP-712 哈希，“已用/已取消”状态分别记录；订单 nonce 只用于区分相同条款。
+- 卖家入金时 `transferFrom` 实际取得 NFT 并核对 `ownerOf`；直接 `safeTransfer` 给 Escrow 会被拒绝。
+- 退款与 NFT 取回分离；授权取回签名绑定链、合约、版本、订单、NFT、接收人、动作、nonce 与有效期。
+- 网页的“入口不缓存”需由托管方对 `index.html` 设置 `Cache-Control: no-cache`；其他资源由 Vite 自带内容哈希。旧标签页自动切换新构建未实现。
+- 事件读取服务未实现；网页直接读链，扫描自己的贡献在演示规模下可用。
